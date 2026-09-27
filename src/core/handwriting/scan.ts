@@ -163,7 +163,17 @@ function label(m: Mask): { ids: Int32Array; count: number } {
 
 /** 칸 이미지 → 칸 좌표(폰트 단위)의 획들 */
 export function vectorizeCell(cell: Gray, frame: EmFrame): { lines: InkLine[]; blobs: InkBlob[]; mask: Mask; skeleton: Mask } {
-  const raw = binarize(cell);
+  const toEm = (x: number, y: number) => frameToEm(frame, (x + 0.5) / cell.w, (y + 0.5) / cell.h);
+  return vectorizeMask(binarize(cell), toEm, frame.size / cell.w);
+}
+
+/**
+ * 잉크 마스크 → 획(중심선)·잉크 덩어리.
+ * @param toEm 픽셀 좌표 → 폰트 좌표
+ * @param emPerPx 픽셀 하나의 폰트 단위 크기(획 반폭 환산용)
+ */
+export function vectorizeMask(raw: Mask, toEm: (x: number, y: number) => Pt, emPerPx: number): { lines: InkLine[]; blobs: InkBlob[]; mask: Mask; skeleton: Mask; pixels: { x: number; y: number }[][] } {
+  const cell = { w: raw.w, h: raw.h };
   // 1차: 아주 작은 잡티만 지운 뒤 펜 굵기를 잰다
   let mask = removeSpecks(raw, 4);
   let dt = distanceTransform(mask);
@@ -178,8 +188,6 @@ export function vectorizeCell(cell: Gray, frame: EmFrame): { lines: InkLine[]; b
   skeleton = thin(mask);
   const { ids, count } = label(mask);
 
-  const emPerPx = frame.size / cell.w;
-  const toEm = (x: number, y: number) => frameToEm(frame, (x + 0.5) / cell.w, (y + 0.5) / cell.h);
   const paths = traceSkeleton(skeleton, Math.max(3, Math.round(medHW * 1.3)));
   // 끝이 거의 맞닿은 긴 획은 닫힌 고리(ㅇ·ㅁ)로 본다
   for (const p of paths) {
@@ -189,8 +197,10 @@ export function vectorizeCell(cell: Gray, frame: EmFrame): { lines: InkLine[]; b
       p.pts.pop();
     }
   }
-  const lines: InkLine[] = paths
-    .filter((p) => p.closed || p.pts.length >= 3)
+  const kept = paths.filter((p) => p.closed || p.pts.length >= 3);
+  /** 획마다 원래 픽셀 좌표(자모별로 잉크를 나눌 때 씨앗으로 쓴다) */
+  const pixels: { x: number; y: number }[][] = kept.map((p) => p.pts);
+  const lines: InkLine[] = kept
     .map((p) => ({
       closed: p.closed,
       blob: ids[p.pts[0].y * cell.w + p.pts[0].x] || undefined,
@@ -212,6 +222,7 @@ export function vectorizeCell(cell: Gray, frame: EmFrame): { lines: InkLine[]; b
     if (blobsWithLine.has(id)) continue;
     const c = toEm(s.sx / s.n, s.sy / s.n);
     lines.push({ blob: id, pts: [c], hw: [Math.max(0.5, s.maxDt) * emPerPx] });
+    pixels.push([{ x: Math.round(s.sx / s.n), y: Math.round(s.sy / s.n) }]);
   }
 
   // 덩어리마다 픽셀을 성기게 뽑아 둔다(자모 자리 판단용)
@@ -227,5 +238,5 @@ export function vectorizeCell(cell: Gray, frame: EmFrame): { lines: InkLine[]; b
     }
   }
   for (let id = 1; id <= count; id++) if (samples.has(id)) blobs.push({ id, samples: samples.get(id)! });
-  return { lines, blobs, mask, skeleton };
+  return { lines, blobs, mask, skeleton, pixels };
 }

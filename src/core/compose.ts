@@ -30,6 +30,8 @@ export interface Placement {
   fromEm: (p: Pt) => Pt;
   skeleton: Stroke[];
   strokes: Stroke[];
+  /** 이미지에서 따 온 외곽선 자모(폰트 좌표) */
+  outline?: Contour[];
 }
 
 export interface Composition {
@@ -39,6 +41,15 @@ export interface Composition {
   placements: Placement[];
   cell?: EmBox;
   layout?: LayoutKey;
+  /** 자모 조합과 별도로 그대로 쓰는 외곽선(이미지에서 따 온 음절·라틴 글자) */
+  extraOutline?: Contour[];
+}
+
+function mapContours(cs: Contour[], f: (p: Pt) => Pt): Contour[] {
+  return cs.map((c) => ({
+    start: f(c.start),
+    segs: c.segs.map((g) => (g.t === 'L' ? { t: 'L' as const, p: f(g.p) } : { t: 'C' as const, c1: f(g.c1), c2: f(g.c2), p: f(g.p) })),
+  }));
 }
 
 // ───────────────────────── 좌표 변환 ─────────────────────────
@@ -109,7 +120,11 @@ function makePlacement(
   const found = resolveJamoKey(project.glyphs, jamo, role, ctx);
   const box = inset(slot, project.params);
   const m = boxMaps(box);
-  const skeleton = found ? project.glyphs[found.key].strokes : [];
+  const def = found ? project.glyphs[found.key] : undefined;
+  const skeleton = def && !def.outline ? def.strokes : [];
+  const outline = def?.outline
+    ? mapContours(def.outline, (q) => ({ x: slot.x0 + (q.x / 100) * (slot.x1 - slot.x0), y: slot.yTop - (q.y / 100) * (slot.yTop - slot.yBottom) }))
+    : undefined;
   return {
     jamo, owner, role, part, ctx, slot, box,
     key: found?.key ?? null,
@@ -118,6 +133,7 @@ function makePlacement(
     fromEm: m.fromEm,
     skeleton,
     strokes: mapStrokes(skeleton, m.toEm, m.sx, m.sy, jamo === 'ㅇ', densityFactor(skeleton, box, project.params)),
+    outline,
   };
 }
 
@@ -211,6 +227,9 @@ export function composeHangul(project: Project, ch: string): Composition | null 
   if (!d) return null;
   const p = project.params;
   const cell = cellBox(p);
+  // 이미지에서 따 온 음절은 원본 외곽선을 그대로 쓴다
+  const syl = project.glyphs[`syl:${ch}`];
+  if (syl?.outline) return { kind: 'hangul', ch, advance: syl.width ?? p.hangulAdvance, placements: [], cell, layout: d.layout, extraOutline: syl.outline };
   const L = layoutFor(project, ch, d.layout, d.jung);
   const out: Placement[] = [];
   const ctx = (bul: string): JamoCtx => ({ layout: d.layout, bul, syllable: ch });
@@ -271,6 +290,13 @@ export function latinScaleX(p: Params) {
 
 export function composeLatin(project: Project, ch: string, def: GlyphDef): Composition {
   const p = project.params;
+  if (def.outline) {
+    const dx = p.latinSide;
+    return {
+      kind: 'latin', ch, advance: Math.round((def.width ?? 0) + p.latinSide * 2), placements: [],
+      extraOutline: mapContours(def.outline, (q) => ({ x: q.x + dx, y: q.y })),
+    };
+  }
   const sx = latinScaleX(p);
   const hv = stemHalfWidths(p).v * maxPressure(p);
   const x0 = p.latinSide + hv;
@@ -330,11 +356,14 @@ export function renderStrokes(project: Project, comp: Composition, strokes: Stro
 }
 
 export function compositionContours(project: Project, comp: Composition): Contour[] {
-  return renderStrokes(project, comp, comp.placements.flatMap((pl) => pl.strokes));
+  const stroked = renderStrokes(project, comp, comp.placements.flatMap((pl) => pl.strokes));
+  const traced = [...comp.placements.flatMap((pl) => pl.outline ?? []), ...(comp.extraOutline ?? [])];
+  return traced.length ? [...stroked, ...traced] : stroked;
 }
 
 /** 자모 하나만 그린 외곽선(편집 화면 강조용) — 전체 글자와 같은 흔들림을 쓴다 */
 export function placementContours(project: Project, comp: Composition, pl: Placement): Contour[] {
+  if (pl.outline) return pl.outline;
   let offset = 0;
   for (const q of comp.placements) {
     if (q === pl) break;
