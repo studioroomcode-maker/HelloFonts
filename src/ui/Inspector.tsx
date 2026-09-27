@@ -6,7 +6,8 @@ import {
 } from '../core/edit';
 import { jamoKey, SCOPE_LABEL, SCOPES, createDefaultProject, type Scope } from '../core/project';
 import { parseSkeleton, serializeSkeleton } from '../core/pathparse';
-import { BUL_LABEL, DOUBLE_CONSONANT, LAYOUT_LABEL, type LayoutKey } from '../core/hangul';
+import { BUL_LABEL, decompose, DOUBLE_CONSONANT, LAYOUT_LABEL, type LayoutKey } from '../core/hangul';
+import { layoutKeyFor } from '../core/compose';
 import { DEFAULT_LAYOUTS, talnemoLayouts } from '../core/defaults/hangul';
 import { applyPresetStyle, PRESETS } from '../core/presets';
 
@@ -364,6 +365,7 @@ function StyleSection() {
           <select value={params.cap} onChange={(e) => setSelect('cap', e.target.value as CapStyle)}>
             <option value="round">둥글게</option>
             <option value="flat">반듯하게</option>
+            <option value="soft">살짝 둥글게</option>
             <option value="square">네모로</option>
             <option value="angled">붓 각도로</option>
           </select>
@@ -432,7 +434,9 @@ function LayoutSection() {
   if (!layout) return null;
   const ownKey = `!${sample}`;
   const own = !!project.layouts[ownKey];
-  const layoutKey = own ? ownKey : layout;
+  const jung = decompose(sample)?.jung ?? '';
+  const layoutKey = layoutKeyFor(project, sample, layout, jung);
+  const vowelOwn = !own && layoutKey !== layout;
   const L = project.layouts[layoutKey];
   const slots = (['cho', 'jung', 'jungH', 'jungV', 'jong'] as const).filter((k) => L[k] && !(k === 'jung' && L.jungH));
   const pl = target?.placement;
@@ -445,7 +449,7 @@ function LayoutSection() {
     });
 
   return (
-    <Group title={own ? `배치 틀 · ‘${sample}’ 전용` : `배치 틀 · ${LAYOUT_LABEL[layout]}`}>
+    <Group title={own ? `배치 틀 · ‘${sample}’ 전용` : vowelOwn ? `배치 틀 · ${LAYOUT_LABEL[layout]} · ${jung} 전용` : `배치 틀 · ${LAYOUT_LABEL[layout]}`}>
       <p className="muted small">글자 칸을 100으로 볼 때 각 자리의 왼쪽·위·오른쪽·아래 위치</p>
       {slots.map((slot) => (
         <div key={slot} className="rect-row">

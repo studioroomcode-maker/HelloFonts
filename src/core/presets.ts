@@ -16,13 +16,34 @@ export interface Preset {
 }
 
 const r = (x0: number, y0: number, x1: number, y1: number): Rect => ({ x0, y0, x1, y1 });
+/** 게임 UI 글씨(폰트샘플): ㅎ 꼭지는 짧은 가로 점, ㄱ·ㅋ 다리는 거의 곧게 내려와 끝만 살짝 휜다 */
+const GAME_JAMO: Record<string, string> = {
+  ㅎ: 'M 30 0 L 70 0 M 2 25 L 98 25 O 50 71 36 29 K 0.3',
+  'ㄱ@cho.vert': 'M 0 4 L 86 4 C 88 42 82 72 58 100',
+  'ㅋ@cho.vert': 'M 0 4 L 86 4 C 88 42 82 72 58 100 M 4 51 L 83 51',
+  // 굵은 가로획에 기둥이 묻히지 않도록 기둥을 모음 자리 맨 위 가까이에서 시작한다
+  ㅗ: 'M 50 8 L 50 100 M 0 100 L 100 100',
+  ㅛ: 'M 30 8 L 30 100 M 70 8 L 70 100 M 0 100 L 100 100',
+};
+
 /** 아주 굵은 글꼴: 가운데 모음 줄(ㅡ·ㅗ)을 얇게 하고 초성·받침에 높이를 더 준다 */
 const HEAVY_LAYOUTS: Record<string, LayoutDef> = {
-  Ho_F: { cho: r(0.1, 0, 0.9, 0.41), jung: r(0, 0.41, 1, 0.57), jong: r(0.1, 0.57, 0.9, 1) },
-  Hu_F: { cho: r(0.1, 0, 0.9, 0.36), jung: r(0, 0.36, 1, 0.62), jong: r(0.1, 0.62, 0.9, 1) },
+  // ㅗ·ㅛ는 기둥이 들어갈 높이가 필요하고, ㅡ는 획 하나뿐이라 얇게 두어 초성·받침에 높이를 준다
+  Ho_F: { cho: r(0.1, 0, 0.9, 0.3), jung: r(0, 0.3, 1, 0.64), jong: r(0.1, 0.64, 0.9, 1) },
+  'Ho_F:ㅡ': { cho: r(0.1, 0, 0.9, 0.41), jung: r(0, 0.41, 1, 0.57), jong: r(0.1, 0.57, 0.9, 1) },
+  Hu_F: { cho: r(0.1, 0, 0.9, 0.35), jung: r(0, 0.35, 1, 0.62), jong: r(0.1, 0.62, 0.9, 1) },
   V_F: { cho: r(0, 0.02, 0.6, 0.55), jung: r(0.6, 0, 1, 0.57), jong: r(0.1, 0.57, 0.9, 1) },
   VL_F: { cho: r(0, 0.02, 0.54, 0.55), jung: r(0.54, 0, 1, 0.57), jong: r(0.1, 0.57, 0.9, 1) },
   VV_F: { cho: r(0, 0.02, 0.52, 0.55), jung: r(0.52, 0, 1, 0.57), jong: r(0.1, 0.57, 0.9, 1) },
+  // 섞임모음: 획이 굵으면 세로 모음(ㅏ·ㅓ·ㅣ)의 곁줄기가 기둥에 묻히지 않게 자리를 넓힌다
+  Co: { cho: r(0, 0, 0.58, 0.55), jung: r(0, 0, 1, 1), jungH: r(0, 0.55, 0.64, 1), jungV: r(0.64, 0, 1, 1) },
+  Co_F: { cho: r(0, 0, 0.58, 0.36), jung: r(0, 0, 1, 0.6), jungH: r(0, 0.36, 0.64, 0.6), jungV: r(0.64, 0, 1, 0.6), jong: r(0.1, 0.6, 0.9, 1) },
+  Cu: { cho: r(0, 0, 0.58, 0.5), jung: r(0, 0, 1, 1), jungH: r(0, 0.5, 0.62, 1), jungV: r(0.62, 0, 1, 1) },
+  Cu_F: { cho: r(0, 0, 0.58, 0.34), jung: r(0, 0, 1, 0.62), jungH: r(0, 0.34, 0.62, 0.62), jungV: r(0.62, 0, 1, 0.62), jong: r(0.1, 0.62, 0.9, 1) },
+  CCo: { cho: r(0, 0, 0.52, 0.55), jung: r(0, 0, 1, 1), jungH: r(0, 0.55, 0.56, 1), jungV: r(0.56, 0, 1, 1) },
+  CCo_F: { cho: r(0, 0, 0.52, 0.36), jung: r(0, 0, 1, 0.6), jungH: r(0, 0.36, 0.56, 0.6), jungV: r(0.56, 0, 1, 0.6), jong: r(0.1, 0.6, 0.9, 1) },
+  CCu: { cho: r(0, 0, 0.52, 0.5), jung: r(0, 0, 1, 1), jungH: r(0, 0.5, 0.54, 1), jungV: r(0.54, 0, 1, 1) },
+  CCu_F: { cho: r(0, 0, 0.52, 0.34), jung: r(0, 0, 1, 0.62), jungH: r(0, 0.34, 0.54, 0.62), jungV: r(0.54, 0, 1, 0.62), jong: r(0.1, 0.62, 0.9, 1) },
 };
 
 /** 세리프 글꼴용 두 층 a, g */
@@ -89,7 +110,7 @@ export const PRESETS: Preset[] = [
       weight: 165, gap: 8, cap: 'round', join: 'round', contrast: 0, wobble: 4, seed: 3, density: 0.6,
       hangulAdvance: 920, hangulSide: 0, hangulTop: 910, hangulBottom: -150, latinSide: 20,
     },
-    jamo: { ㅇ: 'O 50 50 50 50' },
+    jamo: { ...GAME_JAMO, ㅇ: 'O 50 50 50 50' },
     layouts: HEAVY_LAYOUTS,
     sampleText: '클리어! 설정 레벨 업 Lv.1',
   },
@@ -98,9 +119,10 @@ export const PRESETS: Preset[] = [
     name: '게임 본문',
     description: '굵고 반듯한 게임 버튼·메뉴용 고딕',
     params: {
-      weight: 150, gap: 10, cap: 'flat', join: 'miter', contrast: 0.06, density: 0.7,
-      hangulAdvance: 930, hangulSide: 0, hangulTop: 880, hangulBottom: -120, latinSide: 20,
+      weight: 166, gap: 22, cap: 'soft', join: 'miter', contrast: 0.05, density: 0.7,
+      hangulAdvance: 940, hangulSide: 0, hangulTop: 880, hangulBottom: -120, latinSide: 20,
     },
+    jamo: GAME_JAMO,
     layouts: HEAVY_LAYOUTS,
     sampleText: '다시 하기 다음 스테이지 배경음악',
   },

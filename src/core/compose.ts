@@ -193,9 +193,15 @@ function placeVowel(project: Project, jamo: string, ctx: JamoCtx, slots: { jung:
   out.push(makePlacement(project, parts[1], jamo, 'jung', 1, ctx, slots.jungV));
 }
 
-/** 음절 전용 배치 틀이 있으면 그것을 쓴다 */
-export function layoutFor(project: Project, ch: string, layout: LayoutKey): LayoutDef {
-  return project.layouts[`!${ch}`] ?? project.layouts[layout];
+/** 배치 틀 키: 음절 전용('!각') → 모음 전용('Ho_F:ㅡ') → 기본('Ho_F') 순서로 찾는다 */
+export function layoutKeyFor(project: Project, ch: string, layout: LayoutKey, jung: string): string {
+  if (project.layouts[`!${ch}`]) return `!${ch}`;
+  if (project.layouts[`${layout}:${jung}`]) return `${layout}:${jung}`;
+  return layout;
+}
+
+export function layoutFor(project: Project, ch: string, layout: LayoutKey, jung = ''): LayoutDef {
+  return project.layouts[layoutKeyFor(project, ch, layout, jung)];
 }
 
 // ───────────────────────── 한글 ─────────────────────────
@@ -205,7 +211,7 @@ export function composeHangul(project: Project, ch: string): Composition | null 
   if (!d) return null;
   const p = project.params;
   const cell = cellBox(p);
-  const L = layoutFor(project, ch, d.layout);
+  const L = layoutFor(project, ch, d.layout, d.jung);
   const out: Placement[] = [];
   const ctx = (bul: string): JamoCtx => ({ layout: d.layout, bul, syllable: ch });
   placeConsonant(project, d.cho, 'cho', ctx(d.bul.cho), fracToEm(cell, L.cho), out);

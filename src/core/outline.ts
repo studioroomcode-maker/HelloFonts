@@ -301,6 +301,21 @@ function appendEnd(segs: Seg[], p: Pt, out: Pt, hw: number, from: Pt, to: Pt, sp
     segs.push(quarterArc(p, from, tip), quarterArc(p, tip, to));
     return;
   }
+  if (type === 'soft') {
+    // 반듯한 끝이되 두 모서리만 둥글린다(굵은 고딕의 부드러운 끝)
+    const r = hw * 0.42;
+    const across = sub(to, from);
+    const al = Math.hypot(across.x, across.y) || 1;
+    const u = { x: across.x / al, y: across.y / al };
+    const a1 = add(from, mul(out, r)), a2 = add(a1, mul(u, r));
+    const b1 = add(to, mul(out, r)), b2 = add(b1, mul(u, -r));
+    segs.push(
+      { t: 'C', c1: add(from, mul(out, r * KAPPA)), c2: add(a2, mul(u, -r * KAPPA)), p: a2 },
+      { t: 'L', p: b2 },
+      { t: 'C', c1: add(b2, mul(u, r * KAPPA)), c2: add(to, mul(out, r * KAPPA)), p: to },
+    );
+    return;
+  }
   if (type === 'square') {
     segs.push({ t: 'L', p: add(from, mul(out, hw)) }, { t: 'L', p: add(to, mul(out, hw)) }, { t: 'L', p: to });
     return;

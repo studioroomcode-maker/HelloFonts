@@ -45,8 +45,8 @@ export interface GlyphDef {
   width?: number;
 }
 
-/** 획 끝 모양: 둥글게 / 평평하게 / 네모로 연장 / 붓 각도로 비스듬히 */
-export type CapStyle = 'round' | 'flat' | 'square' | 'angled';
+/** 획 끝 모양: 둥글게 / 평평하게 / 살짝 둥글게(모서리만) / 네모로 연장 / 붓 각도로 비스듬히 */
+export type CapStyle = 'round' | 'flat' | 'soft' | 'square' | 'angled';
 export type JoinStyle = 'round' | 'miter' | 'bevel';
 /** 획 끝 장식: 없음 / 명조(부리·맺음) / 브래킷 세리프 / 슬래브 세리프 */
 export type SerifStyle = 'none' | 'myeongjo' | 'bracket' | 'slab';
