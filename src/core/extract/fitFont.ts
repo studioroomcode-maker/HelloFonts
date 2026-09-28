@@ -38,6 +38,8 @@ export interface GlyphSample {
   scale: number;
   /** 잉크 폭(폰트 단위) */
   inkW: number;
+  /** 원본 이미지에서 이 글자의 잉크 상자 */
+  srcBox: Box;
   /** 이웃 글자와의 틈 절반(폰트 단위). 낱말 끝·띄어쓰기 쪽은 NaN */
   gapL: number;
   gapR: number;
@@ -99,7 +101,8 @@ export function readWords(img: RGBA, words: WordSample[], project: Project, pitc
     const hPx = word.box.y1 - word.box.y0;
     const scale = Math.max(1, Math.min(10, 220 / hPx));
     // 좌우로 조금 넓혀 끝 글자가 상자 끝에 닿지 않게 한다(닿은 조각은 다른 그림으로 보고 지우므로)
-    const crop = cropScale(img, { ...word.box, x0: Math.max(0, word.box.x0 - 2), x1: Math.min(img.w, word.box.x1 + 2) }, scale);
+    const cx0 = Math.max(0, word.box.x0 - 2);
+    const crop = cropScale(img, { ...word.box, x0: cx0, x1: Math.min(img.w, word.box.x1 + 2) }, scale);
     const { mask: raw, field } = textMask(crop, scale);
     const mask = removeSpecks(raw, Math.round(6 * scale));
     dropBorderPieces(mask, field);
@@ -149,6 +152,7 @@ export function readWords(img: RGBA, words: WordSample[], project: Project, pitc
         ch: c.ch, word: wi, kind: hangul ? 'hangul' : 'latin',
         lines: v.lines, pixels: v.pixels, field: { w: m.w, h: m.h, v: f }, toEm, emPerPx: s, scale,
         inkW: (c.box.x1 - c.box.x0) * s,
+        srcBox: { x0: cx0 + c.box.x0 / scale, y0: word.box.y0 + c.box.y0 / scale, x1: cx0 + c.box.x1 / scale, y1: word.box.y0 + c.box.y1 / scale },
         gapL: ci > 0 && adjacent(ci - 1) ? ((c.box.x0 - cuts[ci - 1].box.x1) / 2) * s : NaN,
         gapR: ci + 1 < cuts.length && adjacent(ci) ? ((cuts[ci + 1].box.x0 - c.box.x1) / 2) * s : NaN,
       });
@@ -354,6 +358,8 @@ function learnLayouts(project: Project, samples: { s: GlyphSample; label: Uint8A
 
 export interface ExtractReport {
   weight: number;
+  /** 글자별로 자른 자리(원본 이미지 좌표) — 입력한 글자와 잘린 자리가 맞는지 확인용 */
+  cuts: { ch: string; word: number; box: Box }[];
   hangul: { ch: string; ok: boolean }[];
   latin: string[];
   layouts: string[];
@@ -429,6 +435,7 @@ export function extractFont(img: RGBA, words: WordSample[], base: Project): { pr
   }
   const report: ExtractReport = {
     weight: project.params.weight,
+    cuts: samples.map((x) => ({ ch: x.ch, word: x.word, box: x.srcBox })),
     hangul: han.map(({ s, label }) => ({ ch: s.ch, ok: label.some((c) => c > 0) })),
     latin: [],
     layouts,

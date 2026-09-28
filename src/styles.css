@@ -398,3 +398,30 @@ select { padding: 5px 6px; border: 1px solid var(--line-2); border-radius: 6px; 
 @media (max-width: 900px) {
   .photo-work, .hw-tidy { grid-template-columns: 1fr; }
 }
+
+/* ── 이미지에서 뽑기 ── */
+.ex-work { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.ex-left { min-width: 0; }
+.ex-frame { background: #2a2233; border-radius: 10px; overflow: auto; max-height: 72vh; }
+.ex-frame svg { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; user-select: none; }
+.ex-frame svg:not(.zoomed) { max-height: 72vh; }
+.ex-frame svg.zoomed { max-width: none; }
+.ex-box rect { fill: rgba(224, 80, 122, 0.08); stroke: var(--accent); cursor: move; }
+.ex-box.empty rect { stroke-dasharray: 4 3; }
+.ex-box.sel rect { fill: rgba(224, 80, 122, 0.16); stroke: #fff; }
+.ex-box text { fill: var(--accent); font-weight: 700; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.ex-cut rect { fill: none; stroke: #3456d8; pointer-events: none; }
+.ex-cut text { fill: #3456d8; text-anchor: middle; font-weight: 700; paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.ex-handle { fill: #fff; stroke: var(--accent); cursor: nwse-resize; }
+.ex-handle[data-corner="1"], .ex-handle[data-corner="3"] { cursor: nesw-resize; }
+.ex-side select { padding: 7px 9px; border: 1px solid var(--line-2); border-radius: 7px; background: #fff; }
+.ex-side .field-grid { margin: 0; }
+.ex-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 38vh; overflow-y: auto; }
+.ex-list li { display: grid; grid-template-columns: 24px 1fr auto; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 7px; }
+.ex-list li.sel { background: var(--accent-weak); }
+.ex-list input { min-width: 0; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; font-size: 14px; }
+.ex-num { font-size: 12px; font-weight: 700; color: var(--accent); text-align: center; }
+.ex-result { margin-top: 20px; }
+.ex-result h4 { margin: 8px 0 2px; }
+.ex-words { display: flex; flex-wrap: wrap; gap: 2px 22px; }
+@media (max-width: 900px) { .ex-work { grid-template-columns: 1fr; } }

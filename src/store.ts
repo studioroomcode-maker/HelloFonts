@@ -7,7 +7,7 @@ import { getFont, lastCurrent, listFonts, migrateLegacy, newId, putFont, remembe
 const HISTORY_LIMIT = 200;
 
 export type Tool = 'select' | 'pen' | 'ellipse' | 'reference';
-export type Tab = 'library' | 'handwriting' | 'edit' | 'preview' | 'table';
+export type Tab = 'library' | 'handwriting' | 'extract' | 'edit' | 'preview' | 'table';
 
 interface State {
   ready: boolean;

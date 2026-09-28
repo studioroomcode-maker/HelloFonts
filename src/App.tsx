@@ -7,14 +7,19 @@ import { ExportDialog } from './ui/ExportDialog';
 import { Library } from './ui/Library';
 import { FontInfoDialog } from './ui/FontInfoDialog';
 import { HandwritingWizard } from './ui/handwriting/HandwritingWizard';
+import { ExtractWizard } from './ui/extract/ExtractWizard';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'library', label: '내 글꼴' },
   { id: 'handwriting', label: '손글씨로 만들기' },
+  { id: 'extract', label: '이미지에서 뽑기' },
   { id: 'edit', label: '글자 편집' },
   { id: 'preview', label: '미리보기' },
   { id: 'table', label: '글자표' },
 ];
+
+/** 연 글꼴 없이도 쓸 수 있는 탭 */
+const FREE_TABS: Tab[] = ['library', 'handwriting', 'extract'];
 
 const SAVE_LABEL = { saved: '저장됨', saving: '저장 중…', error: '저장 안 됨' } as const;
 
@@ -39,8 +44,8 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.closest('input, textarea, select')) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.('input, textarea, select')) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -54,7 +59,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
 
-  const view: Tab = !fontId && tab !== 'handwriting' ? 'library' : tab;
+  const view: Tab = !fontId && !FREE_TABS.includes(tab) ? 'library' : tab;
 
   return (
     <div className="app">
@@ -70,7 +75,7 @@ export default function App() {
               role="tab"
               aria-selected={view === t.id}
               className={view === t.id ? 'tab active' : 'tab'}
-              disabled={!fontId && t.id !== 'library' && t.id !== 'handwriting'}
+              disabled={!fontId && !FREE_TABS.includes(t.id)}
               onClick={() => set({ tab: t.id })}
             >
               {t.label}
@@ -100,6 +105,7 @@ export default function App() {
           <>
             {view === 'library' && <Library />}
             {view === 'handwriting' && <HandwritingWizard />}
+            {view === 'extract' && <ExtractWizard />}
             {view === 'edit' && <Editor />}
             {view === 'preview' && <Preview />}
             {view === 'table' && <GlyphTable />}
