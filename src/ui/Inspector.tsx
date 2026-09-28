@@ -356,8 +356,9 @@ function StyleSection() {
         </label>
       </div>
 
-      <Slider label="굵기" value={params.weight} min={10} max={240} onChange={(v) => setParam('weight', v)} />
+      <Slider label="굵기" value={params.weight} min={10} max={320} onChange={(v) => setParam('weight', v)} />
       <Slider label="자모 간격" value={params.gap} min={0} max={160} onChange={(v) => setParam('gap', v)} />
+      <Slider label="획 사이 틈" hint="겹쳐 쌓인 가로획·나란한 세로 기둥 사이의 최소 틈(획 굵기 대비). 뚱뚱한 글씨는 작게" value={params.strokeGap} min={0.05} max={1.5} step={0.05} onChange={(v) => setParam('strokeGap', v)} />
       <Slider label="굵기 대비" hint="0이면 모든 획이 같은 굵기, 클수록 가로획이 가늘어짐(명조)" value={params.contrast} min={0} max={0.9} step={0.01} onChange={(v) => setParam('contrast', v)} />
       <div className="field-row three">
         <label>
@@ -407,6 +408,7 @@ function StyleSection() {
           <Slider label="행필(가운데)" value={params.pressureMid} min={0.2} max={2} step={0.05} onChange={(v) => setParam('pressureMid', v)} />
           <Slider label="수필(끝)" value={params.pressureEnd} min={0.2} max={2} step={0.05} onChange={(v) => setParam('pressureEnd', v)} />
           <h4>손글씨</h4>
+          <Slider label="밀도 보정" hint="획이 빽빽한 음절에서 칸이 모자랄 때 쌓인 획을 가늘게 하는 정도. 0이면 굵기를 지키고 틈이 좁아진다" value={params.density} min={0} max={1} step={0.05} onChange={(v) => setParam('density', v)} />
           <Slider label="흔들림" value={params.jitter} min={0} max={50} onChange={(v) => setParam('jitter', v)} />
           <Slider label="글자 기울어짐" value={params.wobble} min={0} max={12} step={0.5} unit="°" onChange={(v) => setParam('wobble', v)} />
           <Slider label="전체 기울기" hint="이탤릭처럼 모든 글자를 기울임" value={params.slant} min={-20} max={20} step={0.5} unit="°" onChange={(v) => setParam('slant', v)} />

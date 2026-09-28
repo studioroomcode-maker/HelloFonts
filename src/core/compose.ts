@@ -6,6 +6,7 @@ import {
 import { resolveJamoKey, type JamoCtx, type Scope } from './project';
 import { slantContours, stemHalfWidths, strokesToContours } from './outline';
 import { strokeStyle, stylizeStrokes } from './style';
+import { balanceSyllable, type Balance } from './balance';
 
 export interface EmBox {
   x0: number;
@@ -76,8 +77,11 @@ export function inset(b: EmBox, p: Params): EmBox {
   const iy = half.h * mp + p.gap / 2;
   let { x0, x1, yTop, yBottom } = b;
   x0 += ix; x1 -= ix; yTop -= iy; yBottom += iy;
-  if (x1 - x0 < 4) { const m = (b.x0 + b.x1) / 2; x0 = m - 2; x1 = m + 2; }
-  if (yTop - yBottom < 4) { const m = (b.yTop + b.yBottom) / 2; yTop = m + 2; yBottom = m - 2; }
+  // 굵은 글꼴의 좁은 칸(ㅃ의 반쪽 등)에서 뼈대 상자가 찌그러져 기둥이 한 막대로 겹치지 않도록
+  // 칸의 45%는 남긴다 — 넘치는 획은 음절 단위 간격 맞추기가 밀어내고 가늘게 한다
+  const minW = Math.max(4, (b.x1 - b.x0) * 0.45), minH = Math.max(4, (b.yTop - b.yBottom) * 0.45);
+  if (x1 - x0 < minW) { const m = (b.x0 + b.x1) / 2; x0 = m - minW / 2; x1 = m + minW / 2; }
+  if (yTop - yBottom < minH) { const m = (b.yTop + b.yBottom) / 2; yTop = m + minH / 2; yBottom = m - minH / 2; }
   return { x0, x1, yTop, yBottom };
 }
 
@@ -90,18 +94,22 @@ export function boxMaps(b: EmBox) {
   };
 }
 
-function mapStrokes(strokes: Stroke[], toEm: (p: Pt) => Pt, sx: number, sy: number, ieung = false, wf = 1): Stroke[] {
+/** 뼈대 좌표 → 폰트 좌표. 원의 반지름은 변환된 점으로 잰다(음절 획 간격 맞추기의 비선형 변환에도 맞도록) */
+function mapStrokes(strokes: Stroke[], toEm: (p: Pt) => Pt, ieung = false, wf = 1): Stroke[] {
   const W = (w: number | undefined) => (wf === 1 ? w : (w ?? 1) * wf);
   return strokes.map((s): Stroke => {
     if (s.kind === 'ellipse') {
-      let rx = s.rx * Math.abs(sx), ry = s.ry * Math.abs(sy);
+      const c = toEm(s.c);
+      const l = toEm({ x: s.c.x - s.rx, y: s.c.y }), r = toEm({ x: s.c.x + s.rx, y: s.c.y });
+      const t = toEm({ x: s.c.x, y: s.c.y - s.ry }), b = toEm({ x: s.c.x, y: s.c.y + s.ry });
+      let rx = Math.abs(r.x - l.x) / 2, ry = Math.abs(t.y - b.y) / 2;
       const k = s.keep ?? 0;
       if (k > 0) {
         const m = Math.min(rx, ry);
         rx += (m - rx) * k;
         ry += (m - ry) * k;
       }
-      return { kind: 'ellipse', c: toEm(s.c), rx, ry, ieung, ...(wf !== 1 ? { w: wf } : {}) };
+      return { kind: 'ellipse', c: { x: (l.x + r.x) / 2, y: (t.y + b.y) / 2 }, rx, ry, ieung, ...(wf !== 1 ? { w: wf } : {}) };
     }
     return {
       kind: 'path',
@@ -132,54 +140,38 @@ function makePlacement(
     toEm: m.toEm,
     fromEm: m.fromEm,
     skeleton,
-    strokes: mapStrokes(skeleton, m.toEm, m.sx, m.sy, jamo === 'ㅇ', densityFactor(skeleton, box, project.params)),
+    strokes: mapStrokes(skeleton, m.toEm, jamo === 'ㅇ'),
     outline,
   };
 }
 
-// ───────────────────────── 밀도 보정 ─────────────────────────
+// ───────────────────────── 음절 획 간격 맞추기 ─────────────────────────
 
-/** 뼈대(0..100)에서 나란히 놓인 가로획(y 위치)·세로획(x 위치)의 가장 좁은 간격 */
-function minParallelSpacing(strokes: Stroke[]): { y: number; x: number } {
-  const ys: number[] = [], xs: number[] = [];
-  for (const s of strokes) {
-    if (s.kind === 'ellipse') {
-      ys.push(s.c.y - s.ry, s.c.y + s.ry);
-      xs.push(s.c.x - s.rx, s.c.x + s.rx);
-      continue;
-    }
-    let prev = s.start;
-    const segs = s.closed ? [...s.segs, { t: 'L' as const, p: s.start }] : s.segs;
-    for (const g of segs) {
-      const dx = Math.abs(g.p.x - prev.x), dy = Math.abs(g.p.y - prev.y);
-      if (g.t === 'L' && dx > 15 && dy < dx * 0.3) ys.push((g.p.y + prev.y) / 2);
-      if (g.t === 'L' && dy > 15 && dx < dy * 0.3) xs.push((g.p.x + prev.x) / 2);
-      prev = g.p;
-    }
-  }
-  const minGap = (v: number[]) => {
-    const u = [...v].sort((a, b) => a - b);
-    let m = Infinity;
-    for (let i = 1; i < u.length; i++) if (u[i] - u[i - 1] > 6) m = Math.min(m, u[i] - u[i - 1]);
-    return m;
-  };
-  return { y: minGap(ys), x: minGap(xs) };
+/** 음절 전체의 획 간격 맞추기 결과를 자모 배치에 입힌다(편집 화면의 좌표 변환도 같이) */
+function applyBalance(pl: Placement, bal: Balance, i: number): Placement {
+  if (!pl.skeleton.length) return pl;
+  const warp = (q: Pt): Pt => ({ x: bal.wx.fwd(q.x), y: bal.wy.fwd(q.y) });
+  const toEm = (q: Pt) => warp(pl.toEm(q));
+  const fromEm = (e: Pt) => pl.fromEm({ x: bal.wx.inv(e.x), y: bal.wy.inv(e.y) });
+  const wb = (b: EmBox): EmBox => ({ x0: bal.wx.fwd(b.x0), x1: bal.wx.fwd(b.x1), yTop: bal.wy.fwd(b.yTop), yBottom: bal.wy.fwd(b.yBottom) });
+  return { ...pl, toEm, fromEm, box: wb(pl.box), slot: wb(pl.slot), strokes: mapStrokes(pl.skeleton, toEm, pl.jamo === 'ㅇ', bal.factor[i]) };
 }
 
-/**
- * 빽빽한 자모(ㄹ·ㅌ·ㅋ 등)가 좁은 자리에 들어가면 획 사이가 막힌다.
- * 나란한 획 사이에 획 굵기의 절반 이상 빈틈이 남도록 그 자모만 가늘게 한다.
- */
-function densityFactor(skeleton: Stroke[], box: EmBox, p: Params): number {
-  if (!p.density || !skeleton.length) return 1;
-  const sp = minParallelSpacing(skeleton);
-  const half = stemHalfWidths(p);
-  const need = 1.35; // 획 사이 빈틈 ≥ 획 굵기 × 0.35
-  let f = 1;
-  if (Number.isFinite(sp.y)) f = Math.min(f, ((sp.y / 100) * (box.yTop - box.yBottom)) / (need * 2 * half.h));
-  if (Number.isFinite(sp.x)) f = Math.min(f, ((sp.x / 100) * (box.x1 - box.x0)) / (need * 2 * half.v));
-  f = 1 - (1 - Math.max(0.55, Math.min(1, f))) * Math.min(1, p.density);
-  return Math.round(f * 1000) / 1000;
+function balanced(project: Project, out: Placement[], cell: EmBox): Placement[] {
+  const p = project.params;
+  if (!out.length) return out;
+  const half = stemHalfWidths(p), mp = maxPressure(p);
+  // 배치 틀이 정한 자모 칸들의 범위 안에서만 옮긴다(다른 음절과 바깥선이 맞도록, 칸 끝에서 자모 간격 절반 안쪽)
+  const g = p.gap / 2;
+  const slots = out.map((pl) => pl.slot);
+  const inner: EmBox = {
+    x0: Math.max(cell.x0, Math.min(...slots.map((b) => b.x0))) + g,
+    x1: Math.min(cell.x1, Math.max(...slots.map((b) => b.x1))) - g,
+    yTop: Math.min(cell.yTop, Math.max(...slots.map((b) => b.yTop))) - g,
+    yBottom: Math.max(cell.yBottom, Math.min(...slots.map((b) => b.yBottom))) + g,
+  };
+  const bal = balanceSyllable(out, inner, p, { h: half.h * mp, v: half.v * mp });
+  return bal ? out.map((pl, i) => applyBalance(pl, bal, i)) : out;
 }
 
 function splitH(b: EmBox, ratio: number): [EmBox, EmBox] {
@@ -240,7 +232,7 @@ export function composeHangul(project: Project, ch: string): Composition | null 
     jungV: L.jungV && fracToEm(cell, L.jungV),
   }, out);
   if (d.jong && L.jong) placeConsonant(project, d.jong, 'jong', ctx(d.bul.jong), fracToEm(cell, L.jong), out);
-  return { kind: 'hangul', ch, advance: p.hangulAdvance, placements: out, cell, layout: d.layout };
+  return { kind: 'hangul', ch, advance: p.hangulAdvance, placements: balanced(project, out, cell), cell, layout: d.layout };
 }
 
 /** 낱자(ㄱ, ㅏ …)를 한 칸에 단독으로 */
@@ -308,7 +300,7 @@ export function composeLatin(project: Project, ch: string, def: GlyphDef): Compo
       const top = ym.fwd(s.c.y + s.ry), bottom = ym.fwd(s.c.y - s.ry);
       return { kind: 'ellipse', c: { x: x0 + s.c.x * sx, y: (top + bottom) / 2 }, rx: s.rx * sx, ry: (top - bottom) / 2 };
     }
-    return mapStrokes([s], toEm, 1, 1)[0];
+    return mapStrokes([s], toEm)[0];
   });
   const width = def.width ?? 0;
   const advance = Math.round(p.latinSide * 2 + hv * 2 + width * sx);

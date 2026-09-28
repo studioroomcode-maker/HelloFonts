@@ -78,6 +78,32 @@ describe('compose', () => {
       }
     }
   });
+  it('굵은 글꼴에서 쌓인 가로획 사이에 틈을 남기고 고르게 편다', () => {
+    const p = createProjectFromPreset('game-title');
+    const c = composeChar(p, '클')!;
+    // 가로획 높이와 굵기 배율
+    const bars = c.placements.flatMap((pl) => pl.strokes.flatMap((s) => {
+      if (s.kind !== 'path') return [];
+      const out: { y: number; w: number }[] = [];
+      let prev = s.start;
+      for (const g of s.segs) {
+        if (Math.abs(g.p.x - prev.x) > 80 && Math.abs(g.p.y - prev.y) < 5) out.push({ y: (g.p.y + prev.y) / 2, w: g.w ?? 1 });
+        prev = g.p;
+      }
+      return out;
+    })).sort((a, b) => a.y - b.y);
+    expect(bars.length).toBeGreaterThanOrEqual(5);
+    const gaps = bars.slice(1).map((b, i) => b.y - bars[i].y);
+    const stroke = p.params.weight * Math.min(...bars.map((b) => b.w));
+    for (const g of gaps) expect(g).toBeGreaterThanOrEqual(stroke * (1 + p.params.strokeGap) - 1);
+    // 자모 사이만 넓게 비지 않는다(가장 넓은 틈 ≤ 가장 좁은 틈 × 1.5)
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(Math.min(...gaps) * 1.5);
+  });
+  it('사이에 다른 자모 획이 끼어도 ㅎ 고리가 눌리지 않는다', () => {
+    const p = createProjectFromPreset('game-body');
+    const ring = composeChar(p, '헌')!.placements[0].strokes.find((s) => s.kind === 'ellipse');
+    expect(ring && ring.kind === 'ellipse' && ring.ry).toBeGreaterThan(p.params.weight * 0.5);
+  });
   it('이전 형식 프로젝트를 불러온다', () => {
     const old = {
       familyName: 'Old',

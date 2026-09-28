@@ -86,8 +86,10 @@ export interface Params {
   seed: number;
   /** 전체 기울기(도, 이탤릭) */
   slant: number;
-  /** 밀도 보정 0..1: 획이 빽빽한 자모는 획 사이가 막히지 않게 가늘게 */
+  /** 밀도 보정 0..1: 음절 칸이 모자라면 쌓인 획을 얼마나 가늘게 할지 */
   density: number;
+  /** 획 사이 최소 틈(획 굵기 대비). 쌓인 가로획·나란한 세로 기둥 사이를 이만큼 벌린다 — 뚱뚱한 글씨는 작게 */
+  strokeGap: number;
   // ── 한글 칸 ──
   hangulAdvance: number;
   hangulSide: number;

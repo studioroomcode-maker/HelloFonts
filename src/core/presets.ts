@@ -107,7 +107,7 @@ export const PRESETS: Preset[] = [
     name: '게임 제목',
     description: '아주 굵고 둥글며 글자마다 살짝 기울어 통통 튀는 게임 제목·배너용',
     params: {
-      weight: 165, gap: 8, cap: 'round', join: 'round', contrast: 0, wobble: 4, seed: 3, density: 0.6,
+      weight: 210, gap: 4, strokeGap: 0.15, cap: 'round', join: 'round', contrast: 0, wobble: 4, seed: 3, density: 1,
       hangulAdvance: 920, hangulSide: 0, hangulTop: 910, hangulBottom: -150, latinSide: 20,
     },
     jamo: { ...GAME_JAMO, ㅇ: 'O 50 50 50 50' },
@@ -157,7 +157,7 @@ export function createProjectFromPreset(id: string, familyName?: string, familyN
 /** 프리셋이 정하는 '스타일' 항목(글자 칸·라틴 비율 같은 치수는 건드리지 않는다) */
 const STYLE_KEYS = [
   'weight', 'gap', 'cap', 'join', 'contrast', 'penAngle', 'pressureStart', 'pressureMid', 'pressureEnd',
-  'serif', 'serifSize', 'kkokji', 'jitter', 'wobble', 'slant',
+  'serif', 'serifSize', 'kkokji', 'jitter', 'wobble', 'slant', 'density', 'strokeGap',
 ] as const;
 
 /**

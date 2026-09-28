@@ -22,6 +22,7 @@ export const DEFAULT_PARAMS: Params = {
   seed: 1,
   slant: 0,
   density: 1,
+  strokeGap: 0.35,
   hangulAdvance: 1000,
   hangulSide: 40,
   hangulTop: 830,
